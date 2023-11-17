@@ -1,1 +1,4 @@
 /target
+
+# secrets that are used in time of debug
+fake.rs
