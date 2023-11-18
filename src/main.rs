@@ -6,6 +6,7 @@ use crate::secrets::{fastmail::SecureStorage, PasswordValue};
 
 mod config;
 mod fastmail;
+mod model;
 mod secrets;
 
 fn main() {
@@ -56,7 +57,7 @@ where
             log::info!("Session started");
             let emails = client.load_emails().unwrap();
             for e in emails.into_iter() {
-                println!("Email: {}", e.email);
+                println!("[{:?}] [Email: {}]", e.created_at, e.email);
             }
         }
         Err(error) => log::error!("Fast Mail connection failed: {:?}", error),

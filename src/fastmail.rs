@@ -8,13 +8,11 @@ use crate::{
         method_response::{JMapMethodResponse, JMapResponse, MethodResponse},
         session::SessionResponse,
     },
+    model::masked_email::MaskedEmail,
     secrets::PasswordValue,
 };
 
-use self::masked_email::MaskedEmail;
-
 mod json;
-pub mod masked_email;
 
 const SESSION_API_URL: &str = "https://api.fastmail.com/jmap/session";
 
@@ -99,6 +97,8 @@ impl FastMailClient {
             ]
         });
 
+        log::info!("Load emails for the user: [{}]", user_id);
+
         let req = self
             .client
             .post(&self.url)
@@ -110,17 +110,22 @@ impl FastMailClient {
 
         if resp.status() == StatusCode::OK {
             let resp = resp.json::<JMapResponse>().map_err(|e| e.into())?;
-            for responses in resp.method_responses {
-                if let JMapMethodResponse(_, MethodResponse::MaskedEmailGet(resp), _) = responses {
-                    println!("Account: {}", resp.account_id);
-                    let emails = &resp.list;
-                    for email in emails.iter() {
-                        println!("{} : {:?}", email.email, email.state);
+            let emails = resp
+                .method_responses
+                .into_iter()
+                .filter_map(|response| {
+                    if let JMapMethodResponse(_, MethodResponse::MaskedEmailGet(resp), _) = response
+                    {
+                        let res = resp.list.into_iter().map(|email| email.into());
+                        Some(res)
+                    } else {
+                        None
                     }
-                }
-            }
+                })
+                .flatten()
+                .collect::<Vec<MaskedEmail>>();
 
-            todo!()
+            Ok(emails)
         } else {
             let error_code = resp.status();
             let resp = resp.text().map_err(|e| e.into())?;

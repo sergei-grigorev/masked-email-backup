@@ -1,8 +1,8 @@
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
-pub mod keychain;
-pub mod fastmail;
 pub mod fake;
+pub mod fastmail;
+pub mod keychain;
 
 /// Struct to store passwords that memory will be always zeroize.
 #[derive(Zeroize, ZeroizeOnDrop)]
