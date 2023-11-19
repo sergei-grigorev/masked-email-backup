@@ -42,8 +42,8 @@ impl UserConfig {
     fn update(config: &AppConfig, config_path: &Path) -> Result<(), io::Error> {
         let file = File::create(config_path)?;
         let mut buf_writer = BufWriter::new(file);
-        writeln!(buf_writer, "{}: \"{}\"", USER_NAME_PARAM, config.user_name)?;
-        writeln!(buf_writer, "{}: \"{}\"", STORAGE_PARAM, config.storage)?;
+        writeln!(buf_writer, "{} = \"{}\"", USER_NAME_PARAM, config.user_name)?;
+        writeln!(buf_writer, "{} = \"{}\"", STORAGE_PARAM, config.storage)?;
         buf_writer.flush()?;
 
         Ok(())

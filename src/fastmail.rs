@@ -67,8 +67,8 @@ impl FastMailClient {
         if resp.status() == StatusCode::OK {
             let resp = resp.json::<SessionResponse>().map_err(|e| e.into())?;
             Ok(FastMailClient {
-                client: client,
-                token: token,
+                client,
+                token,
                 url: resp.api_url,
                 account: resp.primary_accounts.account,
             })
