@@ -1,11 +1,13 @@
-use std::io::{stdout, Write};
-
 use config::{userconfig::UserConfig, AppConfig, ConfigReader};
 use fastmail::FastMailClient;
 use secrets::fake::FakeSecret;
 
-use crate::secrets::{fastmail::SecureStorage, PasswordValue};
+use crate::{
+    cli::{password_prompt, user_prompt},
+    secrets::{fastmail::SecureStorage, PasswordValue},
+};
 
+mod cli;
 mod config;
 mod fastmail;
 mod model;
@@ -28,29 +30,16 @@ where
         config = parsed_config;
     } else {
         // create a new configuration
-        let mut user_name = String::new();
-        let mut directory = String::new();
-
         println!(
             "Configuration is not found or corrupted. Please provide the params to make a new one"
         );
 
-        print!("Please enter your user name: ");
-        stdout().flush().expect("Problem with the terminal");
-
-        std::io::stdin()
-            .read_line(&mut user_name)
-            .expect("Problem with reading from stdio");
-
-        print!("Please enter your database location: ");
-        stdout().flush().expect("Problem with the terminal");
-        std::io::stdin()
-            .read_line(&mut directory)
-            .expect("Problem with reading from stdio");
+        let user_name: String = user_prompt("Please enter your user name").unwrap();
+        let directory: String = user_prompt("Please enter your database location").unwrap();
 
         let new_config = AppConfig {
-            user_name: user_name.trim_end().to_owned(),
-            storage: directory.trim_end().to_owned(),
+            user_name: user_name.to_owned(),
+            storage: directory.to_owned(),
         };
 
         ConfigStorage::update(&new_config).expect("Problem with the config update");
@@ -65,13 +54,8 @@ where
             pass = acc.into();
         }
         Ok(None) => {
-            let fast_mail_password =
-                rpassword::prompt_password("Please provide your fastmail app specific password: ")
-                    .expect("Problem with reading from stdio");
-            let password = PasswordValue {
-                value: fast_mail_password,
-            };
-
+            let password: PasswordValue =
+                password_prompt("Please provide your fastmail app specific password").unwrap();
             PasswordStorage::update(&config.user_name, &password).expect("Password was not stored");
 
             log::info!("Token was stored in keychain");
