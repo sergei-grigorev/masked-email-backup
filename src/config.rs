@@ -1,7 +1,25 @@
+use clap::Command;
 use config::ConfigError;
 use std::io;
 
 pub mod userconfig;
+
+pub const COMMAND_INIT: &str = "init";
+pub const COMMAND_UPDATE_PASSWORD: &str = "update-password";
+
+pub fn run_args() -> Command {
+    let mut command = Command::new("masked-email-cli")
+        .author("Sergei Grigorev")
+        .about("App to see all masked emails created by FastMail service")
+        .subcommand(Command::new(COMMAND_INIT).about("Create or update the program configuration"))
+        .subcommand(
+            Command::new(COMMAND_UPDATE_PASSWORD)
+                .about("Store new fastmail password. The old record might be deleted"),
+        );
+
+    command.build();
+    command
+}
 
 pub struct AppConfig {
     pub user_name: String,

@@ -1,6 +1,12 @@
-use std::io::{stdout, Write};
+use dialoguer::{Input, Password};
 
 use crate::secrets::PasswordValue;
+
+fn to_io_error(error: dialoguer::Error) -> std::io::Error {
+    match error {
+        dialoguer::Error::IO(e) => e,
+    }
+}
 
 /// Print the user prompt text and wait user input.
 ///
@@ -12,13 +18,11 @@ use crate::secrets::PasswordValue;
 ///
 /// truncated string that user has entered
 pub fn user_prompt(prompt: &str) -> Result<String, std::io::Error> {
-    print!("{}: ", prompt);
-    stdout().flush()?;
-
-    let mut res = String::new();
-    std::io::stdin().read_line(&mut res)?;
-
-    Ok(res.trim_end().to_owned())
+    let res = Input::<String>::new()
+        .with_prompt(prompt)
+        .interact_text()
+        .map_err(|e| to_io_error(e))?;
+    Ok(res.to_owned())
 }
 
 /// Print the user prompt text and wait user input. In comparison with [[user_propmt]] the user input will be not printed.
@@ -31,9 +35,10 @@ pub fn user_prompt(prompt: &str) -> Result<String, std::io::Error> {
 ///
 /// password that user has entered
 pub fn password_prompt(prompt: &str) -> Result<PasswordValue, std::io::Error> {
-    print!("{}: ", prompt);
-    stdout().flush()?;
-    let fast_mail_password = rpassword::read_password()?;
+    let fast_mail_password = Password::new()
+        .with_prompt(prompt)
+        .interact()
+        .map_err(|e| to_io_error(e))?;
     let password = PasswordValue {
         value: fast_mail_password,
     };
