@@ -72,7 +72,7 @@ impl ConfigReader for UserConfig {
 
 #[cfg(test)]
 mod tests {
-    use std::env;
+    use std::path::PathBuf;
 
     use crate::config::AppConfig;
 
@@ -80,17 +80,20 @@ mod tests {
 
     #[test]
     fn check_the_write_format() {
-        let mut tmp_dir = env::temp_dir();
-        tmp_dir.push("test_config.toml");
+        // make new tmp directory
+        let tmp_dir = tempfile::tempdir().unwrap();
+
+        let mut tmp_file = PathBuf::from(tmp_dir.path());
+        tmp_file.push("test_config.toml");
 
         let sample = AppConfig {
             user_name: "my_user@example.com".to_owned(),
-            storage: tmp_dir.as_path().to_str().unwrap().to_owned(),
+            storage: tmp_dir.path().to_str().unwrap().to_owned(),
         };
 
-        UserConfig::update(&sample, &tmp_dir).unwrap();
+        UserConfig::update(&sample, &tmp_file).unwrap();
 
-        let reloaded = UserConfig::load(&tmp_dir).unwrap();
+        let reloaded = UserConfig::load(&tmp_file).unwrap();
 
         assert_eq!(reloaded.user_name, sample.user_name);
         assert_eq!(reloaded.storage, sample.storage);
