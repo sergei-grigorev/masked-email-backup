@@ -40,9 +40,9 @@ impl Display for FastMailError {
     }
 }
 
-impl Into<FastMailError> for reqwest::Error {
-    fn into(self) -> FastMailError {
-        FastMailError::RequestFailed(self)
+impl From<reqwest::Error> for FastMailError {
+    fn from(value: reqwest::Error) -> Self {
+        FastMailError::RequestFailed(value)
     }
 }
 
@@ -62,10 +62,12 @@ impl FastMailClient {
         let client = FastMailClient::make_client();
         let req = client.get(SESSION_API_URL).bearer_auth(&token.value);
 
-        let resp = req.send().map_err(|e| e.into())?;
+        let resp = req.send().map_err(|e| FastMailError::from(e))?;
 
         if resp.status() == StatusCode::OK {
-            let resp = resp.json::<SessionResponse>().map_err(|e| e.into())?;
+            let resp = resp
+                .json::<SessionResponse>()
+                .map_err(|e| FastMailError::from(e))?;
             Ok(FastMailClient {
                 client,
                 token,
@@ -74,7 +76,7 @@ impl FastMailClient {
             })
         } else {
             let error_code = resp.status();
-            let resp = resp.text().map_err(|e| e.into())?;
+            let resp = resp.text().map_err(|e| FastMailError::from(e))?;
             Err(FastMailError::RequestErrorCode(error_code, resp))
         }
     }
@@ -106,10 +108,12 @@ impl FastMailClient {
             .header(header::CONTENT_TYPE, "application/json")
             .json(&body);
 
-        let resp = req.send().map_err(|e| e.into())?;
+        let resp = req.send().map_err(|e| FastMailError::from(e))?;
 
         if resp.status() == StatusCode::OK {
-            let resp = resp.json::<JMapResponse>().map_err(|e| e.into())?;
+            let resp = resp
+                .json::<JMapResponse>()
+                .map_err(|e| FastMailError::from(e))?;
             let emails = resp
                 .method_responses
                 .into_iter()
@@ -128,7 +132,7 @@ impl FastMailClient {
             Ok(emails)
         } else {
             let error_code = resp.status();
-            let resp = resp.text().map_err(|e| e.into())?;
+            let resp = resp.text().map_err(|e| FastMailError::from(e))?;
             Err(FastMailError::RequestErrorCode(error_code, resp))
         }
     }

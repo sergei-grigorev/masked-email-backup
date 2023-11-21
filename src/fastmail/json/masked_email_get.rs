@@ -43,9 +43,9 @@ pub struct MaskedEmailJson {
     pub last_message_at: Option<DateTime<Utc>>,
 }
 
-impl Into<MaskedEmailState> for MaskedEmailStateJson {
-    fn into(self) -> MaskedEmailState {
-        match self {
+impl From<MaskedEmailStateJson> for MaskedEmailState {
+    fn from(value: MaskedEmailStateJson) -> Self {
+        match value {
             MaskedEmailStateJson::Pendind => MaskedEmailState::TemporalPending,
             MaskedEmailStateJson::Enabled => MaskedEmailState::Active,
             MaskedEmailStateJson::Disabled => MaskedEmailState::Disabled,
@@ -54,17 +54,17 @@ impl Into<MaskedEmailState> for MaskedEmailStateJson {
     }
 }
 
-impl Into<MaskedEmail> for MaskedEmailJson {
-    fn into(self) -> MaskedEmail {
+impl From<MaskedEmailJson> for MaskedEmail {
+    fn from(value: MaskedEmailJson) -> Self {
         MaskedEmail {
-            internal_id: self.id,
-            email: self.email,
-            description: self.description,
-            web_site: self.for_domain,
-            integration_url: self.url,
-            state: self.state.into(),
-            created_at: self.created_at,
-            last_message_at: self.last_message_at,
+            internal_id: value.id,
+            email: value.email,
+            description: value.description,
+            web_site: value.for_domain,
+            integration_url: value.url,
+            state: value.state.into(),
+            created_at: value.created_at,
+            last_message_at: value.last_message_at,
         }
     }
 }

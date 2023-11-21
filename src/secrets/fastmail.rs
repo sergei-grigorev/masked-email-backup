@@ -7,9 +7,9 @@ pub struct FastMailAccount {
     pub bearer: PasswordValue,
 }
 
-impl Into<PasswordValue> for FastMailAccount {
-    fn into(self) -> PasswordValue {
-        self.bearer
+impl From<FastMailAccount> for PasswordValue {
+    fn from(value: FastMailAccount) -> Self {
+        value.bearer
     }
 }
 

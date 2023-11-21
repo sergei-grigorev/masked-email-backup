@@ -11,9 +11,9 @@ use security_framework::{
 const SERVICE_NAME: &str = "fast-mail-cli";
 const NOT_FOUND_CODE: OSStatus = -25300;
 
-impl Into<PasswordStorageError> for Error {
-    fn into(self) -> PasswordStorageError {
-        PasswordStorageError(self.to_string())
+impl From<Error> for PasswordStorageError {
+    fn from(value: Error) -> Self {
+        PasswordStorageError(value.to_string())
     }
 }
 
@@ -40,7 +40,7 @@ impl SecureStorage for KeyChain {
 
         // create a new password
         set_generic_password(SERVICE_NAME, username, bearer.value.as_bytes())
-            .map_err(|e| e.into())?;
+            .map_err(|e| PasswordStorageError::from(e))?;
         log::info!(
             "New password was stored in KeyChain: [{}] / [{}]",
             SERVICE_NAME,
