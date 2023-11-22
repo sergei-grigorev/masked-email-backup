@@ -9,14 +9,13 @@ use rand_core::{OsRng, RngCore};
 
 use super::{AesKeyValue, PasswordValue};
 
-const PASSWORD_SALT_SIZE_BYTES: usize = 96 / 8;
-const ENCRYPTION_SALT_SIZE_BYTES: usize = 12;
+pub const NONCE_SIZE_BYTES: usize = 96 / 8;
 
-pub type KeyDerivationSalt = [u8; PASSWORD_SALT_SIZE_BYTES];
+pub type KeyDerivationSalt = [u8; NONCE_SIZE_BYTES];
 
 /// Generate new salt for key derivations.
 pub fn generate_new_salt() -> KeyDerivationSalt {
-    let mut key_derivation_salt = [0u8; PASSWORD_SALT_SIZE_BYTES];
+    let mut key_derivation_salt = [0u8; NONCE_SIZE_BYTES];
     OsRng.fill_bytes(&mut key_derivation_salt);
     key_derivation_salt
 }

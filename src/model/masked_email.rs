@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub enum MaskedEmailState {
     TemporalPending,
     Active,
@@ -9,7 +9,7 @@ pub enum MaskedEmailState {
     MarkedForDeletion,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct MaskedEmail {
     pub internal_id: String,
     pub email: String,
