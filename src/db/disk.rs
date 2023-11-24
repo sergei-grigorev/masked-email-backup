@@ -328,7 +328,9 @@ mod test {
         let tmp_dir = tempfile::tempdir().unwrap();
 
         // init new cipher
-        let db = Database::new(tmp_dir.path(), generate_new_salt());
+        let db1 = Database::new(tmp_dir.path(), generate_new_salt());
+        assert_eq!(db1.records_count, 0u32);
+        assert_eq!(db1.path.parent().unwrap(), tmp_dir.path());
 
         let records = vec![MaskedEmail {
             internal_id: "id1".to_owned(),
@@ -346,16 +348,24 @@ mod test {
             &PasswordValue {
                 value: "weak_password".to_owned(),
             },
-            &db.key_derivation_salt,
+            &db1.key_derivation_salt,
         )
         .expect("AES generation failed");
 
         // save database
-        db.store(&records, &key).expect("Serialization failed");
+        db1.store(&records, &key).expect("Serialization failed");
 
         // try to read database
-        let db = Database::init(tmp_dir.path()).expect("Failed to open the file");
-        let res = db.load(&key).expect("Decryption failed");
+        let db2 = Database::init(tmp_dir.path()).expect("Failed to open the file");
+        assert_eq!(db2.path, db1.path);
+        assert_eq!(
+            TryInto::<usize>::try_into(db2.records_count).unwrap(),
+            records.len()
+        );
+        assert!(db2.last_update < Utc::now());
+        assert_eq!(db2.key_derivation_salt, db1.key_derivation_salt);
+
+        let res = db2.load(&key).expect("Decryption failed");
 
         // validate everything has been properly decrypted
         assert_eq!(res, records);
