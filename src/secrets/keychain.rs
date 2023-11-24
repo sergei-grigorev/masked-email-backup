@@ -1,14 +1,16 @@
 use super::{
     fastmail::{FastMailAccount, PasswordStorageError, Result, SecureStorage},
-    PasswordValue,
+    AESKey, AesKeyValue, PasswordValue,
 };
+use base64::{engine::general_purpose, Engine};
 use core_foundation::base::OSStatus;
 use security_framework::{
     base::Error,
     passwords::{delete_generic_password, get_generic_password, set_generic_password},
 };
 
-const SERVICE_NAME: &str = "fast-mail-cli";
+const FASTMAIL_SERVICE_NAME: &str = "fast-mail-cli";
+const AES_SERVICE_NAME: &str = "fast-mail-cli-aes";
 const NOT_FOUND_CODE: OSStatus = -25300;
 
 impl From<Error> for PasswordStorageError {
@@ -19,19 +21,20 @@ impl From<Error> for PasswordStorageError {
 
 pub struct KeyChain();
 
-impl SecureStorage for KeyChain {
+impl KeyChain {
     /// Store password in Apple KeyChain.
     ///
     /// # Arguments
     ///
+    /// * `service` - service name
     /// * `username` - fastmail user email that is will be used to store in keychain.
     ///
     /// # Returns
     ///
     /// nothing in case the operion finished successfully
-    fn update(username: &str, bearer: &PasswordValue) -> Result<()> {
+    fn update_password(service: &str, username: &str, bearer: &PasswordValue) -> Result<()> {
         // create a new password
-        if let Err(e) = delete_generic_password(SERVICE_NAME, username) {
+        if let Err(e) = delete_generic_password(&service, &username) {
             log::warn!(
                 "Old password was not deleted (if that exists): {}",
                 e.message().unwrap_or_default()
@@ -39,11 +42,11 @@ impl SecureStorage for KeyChain {
         }
 
         // create a new password
-        set_generic_password(SERVICE_NAME, username, bearer.value.as_bytes())
+        set_generic_password(service, username, bearer.value.as_bytes())
             .map_err(|e| PasswordStorageError::from(e))?;
         log::info!(
             "New password was stored in KeyChain: [{}] / [{}]",
-            SERVICE_NAME,
+            FASTMAIL_SERVICE_NAME,
             username
         );
 
@@ -54,19 +57,18 @@ impl SecureStorage for KeyChain {
     ///
     /// # Arguments
     ///
+    /// * `service` - service name
     /// * `username` - fastmail user email that is used to store in keychain
     ///
     /// # Returns
     ///
     /// empty in case of no user found. Otherwise it will be a sucessful result.
     ///
-    fn load(username: &str) -> Result<Option<FastMailAccount>> {
-        match get_generic_password(SERVICE_NAME, &username) {
+    fn load_password(service: &str, username: &str) -> Result<Option<PasswordValue>> {
+        match get_generic_password(&service, &username) {
             Ok(password) => {
                 let token = String::from_utf8(password).expect("Password has incorrect symbols");
-                Ok(Some(FastMailAccount {
-                    bearer: PasswordValue { value: token },
-                }))
+                Ok(Some(PasswordValue { value: token }))
             }
             Err(e) => {
                 if e.code() == NOT_FOUND_CODE {
@@ -81,5 +83,38 @@ impl SecureStorage for KeyChain {
                 }
             }
         }
+    }
+}
+
+impl SecureStorage for KeyChain {
+    fn update_password(username: &str, bearer: &PasswordValue) -> Result<()> {
+        KeyChain::update_password(FASTMAIL_SERVICE_NAME, username, bearer)
+    }
+
+    fn load_password(username: &str) -> Result<Option<FastMailAccount>> {
+        KeyChain::load_password(FASTMAIL_SERVICE_NAME, username)
+            .map(|maybe_pass| maybe_pass.map(|p| FastMailAccount { bearer: p }))
+    }
+
+    fn load_key(username: &str) -> Result<Option<super::AesKeyValue>> {
+        KeyChain::load_password(AES_SERVICE_NAME, username).map(|maybe_pass| {
+            maybe_pass.and_then(|base64| {
+                if let Ok(vec) = general_purpose::STANDARD.decode(&base64.value) {
+                    if let Ok(aes) = AESKey::try_from(vec) {
+                        Some(AesKeyValue { value: aes })
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+        })
+    }
+
+    fn update_key(username: &str, aes: &super::AesKeyValue) -> Result<()> {
+        let encoded = general_purpose::STANDARD.encode(aes.value);
+        let secure_string = PasswordValue { value: encoded };
+        KeyChain::update_password(AES_SERVICE_NAME, username, &secure_string)
     }
 }

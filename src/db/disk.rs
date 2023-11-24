@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
 use std::io::{BufReader, BufWriter};
 use std::u32;
 use std::{fs, path::PathBuf};
+use thiserror::Error;
 
 use chrono::{DateTime, Utc};
 
@@ -32,13 +32,18 @@ pub struct Database {
     pub records_count: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum DBError {
+    #[error("storage is not found ({0})")]
     FileNotFound(String),
+    #[error("file has an incorrect format")]
     IncorrectFileFormat,
+    #[error("encoding error")]
     EncodingError,
+    #[error("decoding error")]
     DecodingError,
-    IOError(std::io::Error),
+    #[error("Disk IO error")]
+    IOError(#[from] std::io::Error),
 }
 
 #[derive(Deserialize, Serialize)]
@@ -47,20 +52,6 @@ struct FileHeader {
     nonce: [u8; NONCE_SIZE_BYTES],
     last_updated: DateTime<Utc>,
     records_count: u32,
-}
-
-impl Display for DBError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DBError::FileNotFound(path) => write!(f, "Storage is not found ({})", path),
-            DBError::IncorrectFileFormat => write!(f, "File has an incorrect format"),
-            DBError::EncodingError => write!(f, "Problem with the encryption"),
-            DBError::DecodingError => {
-                write!(f, "Problem with the decryption, try to update the password")
-            }
-            DBError::IOError(io_error) => write!(f, "IO Error: {}", io_error),
-        }
-    }
 }
 
 pub type Result<A> = std::result::Result<A, DBError>;
@@ -206,6 +197,11 @@ impl Database {
         aes: &crate::secrets::AesKeyValue,
     ) -> Result<()> {
         use std::io::Write;
+
+        // create the root directory if that doesn't exist
+        if let Some(root) = self.path.parent() {
+            std::fs::create_dir_all(root).map_err(|e| DBError::IOError(e))?;
+        }
 
         let file = fs::OpenOptions::new()
             .write(true)

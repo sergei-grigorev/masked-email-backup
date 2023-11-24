@@ -1,7 +1,6 @@
-use std::fmt::Display;
-
 use reqwest::{blocking::Client, header, StatusCode};
 use serde_json::json;
+use thiserror::Error;
 
 use crate::{
     fastmail::json::{
@@ -16,34 +15,12 @@ mod json;
 
 const SESSION_API_URL: &str = "https://api.fastmail.com/jmap/session";
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum FastMailError {
-    RequestFailed(reqwest::Error),
+    #[error("problem with the http request")]
+    RequestFailed(#[from] reqwest::Error),
+    #[error("http request failed: [{0}]: {1}")]
     RequestErrorCode(StatusCode, String),
-}
-
-impl Display for FastMailError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self {
-            FastMailError::RequestFailed(error) => {
-                write!(f, "Problem with the HTTP Request: {:?}", error)
-            }
-            FastMailError::RequestErrorCode(http_code, text) => {
-                write!(
-                    f,
-                    "HTTP Request failed [{}]: {}",
-                    http_code,
-                    text.trim_end()
-                )
-            }
-        }
-    }
-}
-
-impl From<reqwest::Error> for FastMailError {
-    fn from(value: reqwest::Error) -> Self {
-        FastMailError::RequestFailed(value)
-    }
 }
 
 pub type Result<A> = std::result::Result<A, FastMailError>;

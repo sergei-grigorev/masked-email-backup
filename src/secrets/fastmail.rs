@@ -1,6 +1,6 @@
-use std::fmt::Display;
+use thiserror::Error;
 
-use super::PasswordValue;
+use super::{AesKeyValue, PasswordValue};
 
 /// Network connection information.
 pub struct FastMailAccount {
@@ -13,19 +13,14 @@ impl From<FastMailAccount> for PasswordValue {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
+#[error("password storage problem: {0}")]
 pub struct PasswordStorageError(pub String);
-
-impl Display for PasswordStorageError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Password storage problem: {}", self.0)
-    }
-}
 
 pub type Result<A> = std::result::Result<A, PasswordStorageError>;
 
 pub trait SecureStorage {
-    /// Store password in Apple KeyChain.
+    /// Store password in KeyChain.
     ///
     /// # Arguments
     ///
@@ -34,7 +29,7 @@ pub trait SecureStorage {
     /// # Returns
     ///
     /// nothing in case the operion finished successfully
-    fn update(username: &str, bearer: &PasswordValue) -> Result<()>;
+    fn update_password(username: &str, bearer: &PasswordValue) -> Result<()>;
 
     /// Load password from the Apple KeyChain.
     ///
@@ -46,5 +41,27 @@ pub trait SecureStorage {
     ///
     /// empty in case of no user found. Otherwise it will be a sucessful result.
     ///
-    fn load(username: &str) -> Result<Option<FastMailAccount>>;
+    fn load_password(username: &str) -> Result<Option<FastMailAccount>>;
+
+    /// Load AES key from Keychain.
+    ///
+    /// # Arguments
+    ///
+    /// * `username` - fastmail user email that is will be used to store in keychain.
+    ///
+    /// # Returns
+    ///
+    /// nothing in case the operion finished successfully
+    fn load_key(username: &str) -> Result<Option<AesKeyValue>>;
+
+    /// Store AES key in KeyChain.
+    ///
+    /// # Arguments
+    ///
+    /// * `username` - fastmail user email that is will be used to store in keychain.
+    ///
+    /// # Returns
+    ///
+    /// nothing in case the operion finished successfully
+    fn update_key(username: &str, key: &AesKeyValue) -> Result<()>;
 }

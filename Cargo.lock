@@ -873,6 +873,7 @@ version = "0.1.0"
 dependencies = [
  "aes-gcm",
  "argon2",
+ "base64 0.21.5",
  "bincode",
  "chrono",
  "clap",
@@ -888,6 +889,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "thiserror",
  "zeroize",
 ]
 
