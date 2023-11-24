@@ -6,7 +6,10 @@ use std::{fs, path::PathBuf};
 
 use chrono::{DateTime, Utc};
 
-use crate::secrets::encryption::{KeyDerivationSalt, NONCE_SIZE_BYTES};
+use crate::secrets::encryption::{
+    decrypt_in_place, encrypt_in_place, EncryptionNonce, EncryptionTag, KeyDerivationSalt,
+    NONCE_SIZE_BYTES,
+};
 
 const DATABASE_FILE_NAME: &'static str = "masked_mails.db.enc";
 const FILE_SIGNATURE: [u8; 4] = [b'M', b'E', b'F', 1u8];
@@ -19,7 +22,8 @@ const FILE_SIGNATURE: [u8; 4] = [b'M', b'E', b'F', 1u8];
 /// - records count (4 bytes)
 /// ### others are not a part of the preloaded header
 /// - unique nonce 12 bytes
-/// - total encrypted block size (8 bytes)
+/// - tag 16 bytes (from last updated + records count)
+/// - total encrypted block bytes length (8 bytes)
 /// - encrypted block (see the size above)
 pub struct Database {
     path: PathBuf,
@@ -133,8 +137,10 @@ impl Database {
     /// * `key` - aes encryption key
     pub fn load(
         &self,
-        _: &crate::secrets::AesKeyValue,
+        key: &crate::secrets::AesKeyValue,
     ) -> Result<Vec<crate::model::masked_email::MaskedEmail>> {
+        use std::io::Read;
+
         if self.records_count > 0 {
             // read file header only
             let file = fs::File::open(self.path.as_path()).map_err(|e| DBError::IOError(e))?;
@@ -142,10 +148,44 @@ impl Database {
 
             // skip file header
             let header: bincode::Result<FileHeader> = bincode::deserialize_from(&mut buffer);
-            if header.is_ok() {
-                let emails: bincode::Result<Vec<crate::model::masked_email::MaskedEmail>> =
-                    bincode::deserialize_from(&mut buffer);
-                emails.map_err(|_| DBError::DecodingError)
+            if let Ok(file_header) = header {
+                let associated_data =
+                    bincode::serialize(&(file_header.last_updated, file_header.records_count))
+                        .expect("Error is not expected");
+
+                // - unique nonce 12 bytes
+                let mut nonce: EncryptionNonce = Default::default();
+                buffer
+                    .read_exact(&mut nonce)
+                    .map_err(|ioe| DBError::IOError(ioe))?;
+
+                // - tag 16 bytes
+                let mut tag: EncryptionTag = Default::default();
+                buffer
+                    .read_exact(&mut tag)
+                    .map_err(|ioe| DBError::IOError(ioe))?;
+
+                // - total encrypted block bytes length (8 bytes)
+                let block_size: u64 =
+                    bincode::deserialize_from(&mut buffer).map_err(|_| DBError::DecodingError)?;
+                let block_size =
+                    usize::try_from(block_size).expect("File size is too big for that platform");
+
+                // - encrypted block (see the size above)
+                let mut encrypted_blob: Vec<u8> = Vec::<u8>::with_capacity(block_size);
+                buffer
+                    .read_to_end(&mut encrypted_blob)
+                    .map_err(|ioe| DBError::IOError(ioe))?;
+                if encrypted_blob.len() == block_size {
+                    // decrypt the blob
+                    decrypt_in_place(&key, &nonce, &associated_data, &mut encrypted_blob, &tag)
+                        .map_err(|_| DBError::DecodingError)?;
+
+                    // transform to emails
+                    bincode::deserialize(&encrypted_blob).map_err(|_| DBError::DecodingError)
+                } else {
+                    Err(DBError::IncorrectFileFormat)
+                }
             } else {
                 Err(DBError::DecodingError)
             }
@@ -163,8 +203,10 @@ impl Database {
     pub fn store(
         &self,
         emails: &Vec<crate::model::masked_email::MaskedEmail>,
-        _: &crate::secrets::AesKeyValue,
+        aes: &crate::secrets::AesKeyValue,
     ) -> Result<()> {
+        use std::io::Write;
+
         let file = fs::OpenOptions::new()
             .write(true)
             .create(true)
@@ -181,10 +223,34 @@ impl Database {
         };
 
         // serialize header
-        bincode::serialize_into(&mut buffer, &file_header).map_err(|_| DBError::EncodingError)?;
+        bincode::serialize_into(&mut buffer, &file_header).expect("Error is not expected");
 
-        // todo: serialize ENCRYPTED emails
-        bincode::serialize_into(&mut buffer, &emails).map_err(|_| DBError::EncodingError)?;
+        // encode emails list
+        let mut content_buffer = bincode::serialize(&emails).map_err(|_| DBError::EncodingError)?;
+
+        // encrypt that block
+        let associated_data =
+            bincode::serialize(&(file_header.last_updated, file_header.records_count))
+                .expect("No error expected");
+        let (tag, nonce) = encrypt_in_place(&aes, &associated_data, &mut content_buffer)
+            .map_err(|_| DBError::EncodingError)?;
+
+        // serialize nonce
+        buffer.write(&nonce).map_err(|ioe| DBError::IOError(ioe))?;
+        // serialize tag
+        buffer.write(&tag).map_err(|ioe| DBError::IOError(ioe))?;
+
+        // serialize binary length
+        let blob_size: u64 = content_buffer
+            .len()
+            .try_into()
+            .expect("Blob size is too big");
+        bincode::serialize_into(&mut buffer, &blob_size).map_err(|_| DBError::EncodingError)?;
+
+        // serialize binary
+        buffer
+            .write(&content_buffer)
+            .map_err(|ioe| DBError::IOError(ioe))?;
 
         Ok(())
     }

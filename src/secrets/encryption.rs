@@ -13,6 +13,10 @@ pub const NONCE_SIZE_BYTES: usize = 96 / 8;
 
 pub type KeyDerivationSalt = [u8; NONCE_SIZE_BYTES];
 
+pub type EncryptionTag = Tag<U16>;
+
+pub type EncryptionNonce = Nonce<Aes256Gcm>;
+
 /// Generate new salt for key derivations.
 pub fn generate_new_salt() -> KeyDerivationSalt {
     let mut key_derivation_salt = [0u8; NONCE_SIZE_BYTES];
@@ -46,7 +50,7 @@ pub fn encrypt_in_place(
     key: &AesKeyValue,
     associated_data: &Vec<u8>,
     buffer: &mut Vec<u8>,
-) -> Result<(Tag<U16>, Nonce<Aes256Gcm>), aes_gcm::Error> {
+) -> Result<(EncryptionTag, EncryptionNonce), aes_gcm::Error> {
     let key: &Key<Aes256Gcm> = key.deref().into();
 
     // generate cipher and encrypt the message
@@ -59,10 +63,10 @@ pub fn encrypt_in_place(
 /// Descrypt the buffer (in-place).
 pub fn decrypt_in_place(
     key: &AesKeyValue,
-    nonce: &Nonce<Aes256Gcm>,
+    nonce: &EncryptionNonce,
     associated_data: &Vec<u8>,
     buffer: &mut Vec<u8>,
-    tag: &Tag<U16>,
+    tag: &EncryptionTag,
 ) -> Result<(), aes_gcm::Error> {
     let key: &Key<Aes256Gcm> = key.deref().into();
 
