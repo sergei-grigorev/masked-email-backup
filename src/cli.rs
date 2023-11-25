@@ -21,7 +21,7 @@ pub fn user_prompt(prompt: &str) -> Result<String, std::io::Error> {
     let res = Input::<String>::new()
         .with_prompt(prompt)
         .interact_text()
-        .map_err(|e| to_io_error(e))?;
+        .map_err(to_io_error)?;
     Ok(res.to_owned())
 }
 
@@ -38,7 +38,7 @@ pub fn password_prompt(prompt: &str) -> Result<PasswordValue, std::io::Error> {
     let fast_mail_password = Password::new()
         .with_prompt(prompt)
         .interact()
-        .map_err(|e| to_io_error(e))?;
+        .map_err(to_io_error)?;
     let password = PasswordValue {
         value: fast_mail_password,
     };

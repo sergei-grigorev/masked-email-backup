@@ -24,7 +24,7 @@ fn main() {
     run_app::<FakeSecret, UserConfig>();
 }
 
-fn run_app<PasswordStorage, ConfigStorage>() -> ()
+fn run_app<PasswordStorage, ConfigStorage>()
 where
     PasswordStorage: SecureStorage,
     ConfigStorage: ConfigReader,

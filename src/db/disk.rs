@@ -11,7 +11,7 @@ use crate::secrets::encryption::{
     NONCE_SIZE_BYTES,
 };
 
-const DATABASE_FILE_NAME: &'static str = "masked_mails.db.enc";
+const DATABASE_FILE_NAME: &str = "masked_mails.db.enc";
 const FILE_SIGNATURE: [u8; 4] = [b'M', b'E', b'F', 1u8];
 
 /// File format specification:
@@ -66,8 +66,7 @@ impl Database {
             match fs::read(full_path.as_path()) {
                 Ok(_) => {
                     // read file header only
-                    let file =
-                        fs::File::open(full_path.as_path()).map_err(|e| DBError::IOError(e))?;
+                    let file = fs::File::open(full_path.as_path()).map_err(DBError::IOError)?;
                     let buffer = BufReader::new(file);
 
                     // deserialize file header
@@ -77,7 +76,7 @@ impl Database {
                             if header.file_signature == FILE_SIGNATURE {
                                 // parse last updated_ts and records count
                                 Ok(Database {
-                                    path: full_path.into(),
+                                    path: full_path,
                                     key_derivation_salt: header.nonce,
                                     last_update: header.last_updated,
                                     records_count: header.records_count,
@@ -134,7 +133,7 @@ impl Database {
 
         if self.records_count > 0 {
             // read file header only
-            let file = fs::File::open(self.path.as_path()).map_err(|e| DBError::IOError(e))?;
+            let file = fs::File::open(self.path.as_path()).map_err(DBError::IOError)?;
             let mut buffer = BufReader::new(file);
 
             // skip file header
@@ -146,15 +145,11 @@ impl Database {
 
                 // - unique nonce 12 bytes
                 let mut nonce: EncryptionNonce = Default::default();
-                buffer
-                    .read_exact(&mut nonce)
-                    .map_err(|ioe| DBError::IOError(ioe))?;
+                buffer.read_exact(&mut nonce).map_err(DBError::IOError)?;
 
                 // - tag 16 bytes
                 let mut tag: EncryptionTag = Default::default();
-                buffer
-                    .read_exact(&mut tag)
-                    .map_err(|ioe| DBError::IOError(ioe))?;
+                buffer.read_exact(&mut tag).map_err(DBError::IOError)?;
 
                 // - total encrypted block bytes length (8 bytes)
                 let block_size: u64 =
@@ -166,10 +161,10 @@ impl Database {
                 let mut encrypted_blob: Vec<u8> = Vec::<u8>::with_capacity(block_size);
                 buffer
                     .read_to_end(&mut encrypted_blob)
-                    .map_err(|ioe| DBError::IOError(ioe))?;
+                    .map_err(DBError::IOError)?;
                 if encrypted_blob.len() == block_size {
                     // decrypt the blob
-                    decrypt_in_place(&key, &nonce, &associated_data, &mut encrypted_blob, &tag)
+                    decrypt_in_place(key, &nonce, &associated_data, &mut encrypted_blob, &tag)
                         .map_err(|_| DBError::DecodingError)?;
 
                     // transform to emails
@@ -200,14 +195,14 @@ impl Database {
 
         // create the root directory if that doesn't exist
         if let Some(root) = self.path.parent() {
-            std::fs::create_dir_all(root).map_err(|e| DBError::IOError(e))?;
+            std::fs::create_dir_all(root).map_err(DBError::IOError)?;
         }
 
         let file = fs::OpenOptions::new()
             .write(true)
             .create(true)
             .open(self.path.as_path())
-            .map_err(|e| DBError::IOError(e))?;
+            .map_err(DBError::IOError)?;
 
         let mut buffer = BufWriter::new(file);
 
@@ -228,13 +223,13 @@ impl Database {
         let associated_data =
             bincode::serialize(&(file_header.last_updated, file_header.records_count))
                 .expect("No error expected");
-        let (tag, nonce) = encrypt_in_place(&aes, &associated_data, &mut content_buffer)
+        let (tag, nonce) = encrypt_in_place(aes, &associated_data, &mut content_buffer)
             .map_err(|_| DBError::EncodingError)?;
 
         // serialize nonce
-        buffer.write(&nonce).map_err(|ioe| DBError::IOError(ioe))?;
+        buffer.write(&nonce).map_err(DBError::IOError)?;
         // serialize tag
-        buffer.write(&tag).map_err(|ioe| DBError::IOError(ioe))?;
+        buffer.write(&tag).map_err(DBError::IOError)?;
 
         // serialize binary length
         let blob_size: u64 = content_buffer
@@ -244,9 +239,7 @@ impl Database {
         bincode::serialize_into(&mut buffer, &blob_size).map_err(|_| DBError::EncodingError)?;
 
         // serialize binary
-        buffer
-            .write(&content_buffer)
-            .map_err(|ioe| DBError::IOError(ioe))?;
+        buffer.write(&content_buffer).map_err(DBError::IOError)?;
 
         Ok(())
     }

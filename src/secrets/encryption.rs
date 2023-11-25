@@ -48,13 +48,13 @@ pub fn generate_key(
 /// Encrypt the buffer (in-place).
 pub fn encrypt_in_place(
     key: &AesKeyValue,
-    associated_data: &Vec<u8>,
-    buffer: &mut Vec<u8>,
+    associated_data: &[u8],
+    buffer: &mut [u8],
 ) -> Result<(EncryptionTag, EncryptionNonce), aes_gcm::Error> {
     let key: &Key<Aes256Gcm> = key.deref().into();
 
     // generate cipher and encrypt the message
-    let cipher: Aes256Gcm = Aes256Gcm::new(&key);
+    let cipher: Aes256Gcm = Aes256Gcm::new(key);
     let nonce: Nonce<Aes256Gcm> = Aes256Gcm::generate_nonce(OsRng);
     let tag: Tag<U16> = cipher.encrypt_in_place_detached(&nonce, associated_data, buffer)?;
     Ok((tag, nonce))
@@ -64,15 +64,15 @@ pub fn encrypt_in_place(
 pub fn decrypt_in_place(
     key: &AesKeyValue,
     nonce: &EncryptionNonce,
-    associated_data: &Vec<u8>,
-    buffer: &mut Vec<u8>,
+    associated_data: &[u8],
+    buffer: &mut [u8],
     tag: &EncryptionTag,
 ) -> Result<(), aes_gcm::Error> {
     let key: &Key<Aes256Gcm> = key.deref().into();
 
     // generate cipher and encrypt the message
-    let cipher: Aes256Gcm = Aes256Gcm::new(&key);
-    cipher.decrypt_in_place_detached(&nonce, associated_data, buffer, tag)?;
+    let cipher: Aes256Gcm = Aes256Gcm::new(key);
+    cipher.decrypt_in_place_detached(nonce, associated_data, buffer, tag)?;
     Ok(())
 }
 

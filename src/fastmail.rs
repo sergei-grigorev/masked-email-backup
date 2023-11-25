@@ -39,12 +39,12 @@ impl FastMailClient {
         let client = FastMailClient::make_client();
         let req = client.get(SESSION_API_URL).bearer_auth(&token.value);
 
-        let resp = req.send().map_err(|e| FastMailError::from(e))?;
+        let resp = req.send().map_err(FastMailError::from)?;
 
         if resp.status() == StatusCode::OK {
             let resp = resp
                 .json::<SessionResponse>()
-                .map_err(|e| FastMailError::from(e))?;
+                .map_err(FastMailError::from)?;
             Ok(FastMailClient {
                 client,
                 token,
@@ -53,7 +53,7 @@ impl FastMailClient {
             })
         } else {
             let error_code = resp.status();
-            let resp = resp.text().map_err(|e| FastMailError::from(e))?;
+            let resp = resp.text().map_err(FastMailError::from)?;
             Err(FastMailError::RequestErrorCode(error_code, resp))
         }
     }
@@ -85,12 +85,10 @@ impl FastMailClient {
             .header(header::CONTENT_TYPE, "application/json")
             .json(&body);
 
-        let resp = req.send().map_err(|e| FastMailError::from(e))?;
+        let resp = req.send().map_err(FastMailError::from)?;
 
         if resp.status() == StatusCode::OK {
-            let resp = resp
-                .json::<JMapResponse>()
-                .map_err(|e| FastMailError::from(e))?;
+            let resp = resp.json::<JMapResponse>().map_err(FastMailError::from)?;
             let emails = resp
                 .method_responses
                 .into_iter()
@@ -109,7 +107,7 @@ impl FastMailClient {
             Ok(emails)
         } else {
             let error_code = resp.status();
-            let resp = resp.text().map_err(|e| FastMailError::from(e))?;
+            let resp = resp.text().map_err(FastMailError::from)?;
             Err(FastMailError::RequestErrorCode(error_code, resp))
         }
     }

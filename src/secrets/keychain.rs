@@ -34,7 +34,7 @@ impl KeyChain {
     /// nothing in case the operion finished successfully
     fn update_password(service: &str, username: &str, bearer: &PasswordValue) -> Result<()> {
         // create a new password
-        if let Err(e) = delete_generic_password(&service, &username) {
+        if let Err(e) = delete_generic_password(service, username) {
             log::warn!(
                 "Old password was not deleted (if that exists): {}",
                 e.message().unwrap_or_default()
@@ -43,7 +43,7 @@ impl KeyChain {
 
         // create a new password
         set_generic_password(service, username, bearer.value.as_bytes())
-            .map_err(|e| PasswordStorageError::from(e))?;
+            .map_err(PasswordStorageError::from)?;
         log::info!(
             "New password was stored in KeyChain: [{}] / [{}]",
             FASTMAIL_SERVICE_NAME,
@@ -65,7 +65,7 @@ impl KeyChain {
     /// empty in case of no user found. Otherwise it will be a sucessful result.
     ///
     fn load_password(service: &str, username: &str) -> Result<Option<PasswordValue>> {
-        match get_generic_password(&service, &username) {
+        match get_generic_password(service, username) {
             Ok(password) => {
                 let token = String::from_utf8(password).expect("Password has incorrect symbols");
                 Ok(Some(PasswordValue { value: token }))
@@ -99,6 +99,7 @@ impl SecureStorage for KeyChain {
     fn load_key(username: &str) -> Result<Option<super::AesKeyValue>> {
         KeyChain::load_password(AES_SERVICE_NAME, username).map(|maybe_pass| {
             maybe_pass.and_then(|base64| {
+                #[allow(clippy::needless_borrows_for_generic_args)]
                 if let Ok(vec) = general_purpose::STANDARD.decode(&base64.value) {
                     if let Ok(aes) = AESKey::try_from(vec) {
                         Some(AesKeyValue { value: aes })

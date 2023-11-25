@@ -10,9 +10,9 @@ use super::{AppConfig, ConfigReader};
 
 pub struct UserConfig();
 
-const CONFIG_PATH: &'static str = "maskedemail-cli.toml";
-const USER_NAME_PARAM: &'static str = "user_name";
-const STORAGE_PARAM: &'static str = "storage";
+const CONFIG_PATH: &str = "maskedemail-cli.toml";
+const USER_NAME_PARAM: &str = "user_name";
+const STORAGE_PARAM: &str = "storage";
 
 impl UserConfig {
     /// Get the full path for the config file.
