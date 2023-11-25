@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -7,6 +9,17 @@ pub enum MaskedEmailState {
     Active,
     Disabled,
     MarkedForDeletion,
+}
+
+impl Display for MaskedEmailState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            MaskedEmailState::TemporalPending => write!(f, "pending"),
+            MaskedEmailState::Active => write!(f, "enabled"),
+            MaskedEmailState::Disabled => write!(f, "disabled"),
+            MaskedEmailState::MarkedForDeletion => write!(f, "deleted"),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]

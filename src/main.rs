@@ -1,7 +1,7 @@
-use actions::{print_emails, refresh_db};
+use actions::{export_emails, refresh_db, show_emails, ExportFormat};
 use config::{
-    run_args, userconfig::UserConfig, AppConfig, ConfigReader, COMMAND_INIT, COMMAND_PRINT_DB,
-    COMMAND_REFRESH_DB, COMMAND_UPDATE_PASSWORD,
+    run_args, userconfig::UserConfig, AppConfig, ConfigReader, COMMAND_EXPORT_DB, COMMAND_INIT,
+    COMMAND_REFRESH_DB, COMMAND_SHOW_DB, COMMAND_UPDATE_PASSWORD,
 };
 use secrets::fake::FakeSecret;
 
@@ -29,9 +29,12 @@ where
     PasswordStorage: SecureStorage,
     ConfigStorage: ConfigReader,
 {
+    // load config
+    let config: Result<AppConfig, _> = ConfigStorage::try_load();
+
     let args = run_args().get_matches();
-    match args.subcommand_name() {
-        Some(init) if init == COMMAND_INIT => {
+    match args.subcommand() {
+        Some((COMMAND_INIT, _)) => {
             // create a new configuration
             let user_name: String = user_prompt("Please enter your user name").unwrap();
             let directory: String = user_prompt("Please enter your database location").unwrap();
@@ -43,32 +46,37 @@ where
 
             ConfigStorage::update(&new_config).expect("Problem with the config update");
         }
-        Some(pass) if pass == COMMAND_UPDATE_PASSWORD => {
-            // load config
-            let config: AppConfig =
-                ConfigStorage::load().expect("Configuration is not created or corrupted");
-
+        Some((COMMAND_UPDATE_PASSWORD, _)) => {
             let password: PasswordValue =
                 password_prompt("Please provide your fastmail app specific password").unwrap();
+
+            let config: AppConfig = config.expect("Configuration is not created or corrupted");
             PasswordStorage::update_password(&config.user_name, &password)
                 .expect("Password was not stored");
 
             log::info!("Token was stored in keychain");
         }
-        Some(fetch) if fetch == COMMAND_REFRESH_DB => {
-            // load config
-            let config: AppConfig =
-                ConfigStorage::load().expect("Configuration is not created or corrupted");
+        Some((COMMAND_REFRESH_DB, _)) => {
+            let config: AppConfig = config.expect("Configuration is not created or corrupted");
             match refresh_db::<PasswordStorage>(&config) {
                 Ok(()) => (),
                 Err(err) => println!("Operation failed: {err}"),
             }
         }
-        Some(fetch) if fetch == COMMAND_PRINT_DB => {
-            // load config
-            let config: AppConfig =
-                ConfigStorage::load().expect("Configuration is not created or corrupted");
-            match print_emails::<PasswordStorage>(&config) {
+        Some((COMMAND_EXPORT_DB, args)) => {
+            let config: AppConfig = config.expect("Configuration is not created or corrupted");
+            if args.contains_id("tsv") {
+                match export_emails::<PasswordStorage>(&config, ExportFormat::TSV) {
+                    Ok(()) => (),
+                    Err(err) => println!("Operation failed: {err}"),
+                }
+            } else {
+                println!("Export format is not defined");
+            }
+        }
+        Some((COMMAND_SHOW_DB, _)) => {
+            let config: AppConfig = config.expect("Configuration is not created or corrupted");
+            match show_emails::<PasswordStorage>(&config) {
                 Ok(()) => (),
                 Err(err) => println!("Operation failed: {err}"),
             }

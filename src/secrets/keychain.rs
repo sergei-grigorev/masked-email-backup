@@ -34,7 +34,7 @@ impl KeyChain {
     /// nothing in case the operion finished successfully
     fn update_password(service: &str, username: &str, bearer: &PasswordValue) -> Result<()> {
         // create a new password
-        if let Err(e) = delete_generic_password(service, username) {
+        if let Err(e) = delete_generic_password(&service, &username) {
             log::warn!(
                 "Old password was not deleted (if that exists): {}",
                 e.message().unwrap_or_default()
@@ -104,9 +104,11 @@ impl SecureStorage for KeyChain {
                     if let Ok(aes) = AESKey::try_from(vec) {
                         Some(AesKeyValue { value: aes })
                     } else {
+                        log::warn!("[{AES_SERVICE_NAME}] / [username] has an incorrect code length");
                         None
                     }
                 } else {
+                    log::warn!("[{AES_SERVICE_NAME}] / [username] has an incorrect code that is not base64");
                     None
                 }
             })

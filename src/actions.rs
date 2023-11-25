@@ -9,6 +9,13 @@ use crate::{
     },
 };
 
+mod export;
+mod show_emails;
+
+pub enum ExportFormat {
+    TSV,
+}
+
 pub fn refresh_db<PasswordStorage>(config: &AppConfig) -> Result<(), String>
 where
     PasswordStorage: SecureStorage,
@@ -73,7 +80,10 @@ where
     }
 }
 
-pub fn print_emails<PasswordStorage>(config: &AppConfig) -> Result<(), String>
+pub fn export_emails<PasswordStorage>(
+    config: &AppConfig,
+    format: ExportFormat,
+) -> Result<(), String>
 where
     PasswordStorage: SecureStorage,
 {
@@ -87,9 +97,34 @@ where
         let existed_key = existed_key.ok_or("AES key is not found in the keychain")?;
 
         let emails = db.load(&existed_key).map_err(|_| "Decryption error")?;
-        for email in emails {
-            println!("{}", email.email);
+
+        // todo: convert to the right format
+        match format {
+            ExportFormat::TSV => {
+                export::export_tsv(&emails);
+            }
         }
+        Ok(())
+    } else {
+        Err("Database is not found".to_string())
+    }
+}
+
+pub fn show_emails<PasswordStorage>(config: &AppConfig) -> Result<(), String>
+where
+    PasswordStorage: SecureStorage,
+{
+    if let Ok(db) = Database::init(&config.storage) {
+        // try to load AES key
+        let existed_key = PasswordStorage::load_key(&config.user_name).map_err(|_| {
+            "Keychain access failed, please add permissions or delete the encryption key"
+        })?;
+
+        // todo: add key derivation here
+        let existed_key = existed_key.ok_or("AES key is not found in the keychain")?;
+
+        let emails = db.load(&existed_key).map_err(|_| "Decryption error")?;
+        show_emails::interact(&emails);
         Ok(())
     } else {
         Err("Database is not found".to_string())

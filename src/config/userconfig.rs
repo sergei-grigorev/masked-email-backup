@@ -51,7 +51,7 @@ impl UserConfig {
 }
 
 impl ConfigReader for UserConfig {
-    fn load() -> Result<AppConfig, ConfigError> {
+    fn try_load() -> Result<AppConfig, ConfigError> {
         let config_path: PathBuf = UserConfig::derive_config_path();
         log::info!(
             "Attempt to read the config from [{}]",
