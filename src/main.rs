@@ -66,7 +66,7 @@ where
         Some((COMMAND_EXPORT_DB, args)) => {
             let config: AppConfig = config.expect("Configuration is not created or corrupted");
             if args.contains_id("tsv") {
-                match export_emails::<PasswordStorage>(&config, ExportFormat::TSV) {
+                match export_emails::<PasswordStorage>(&config, ExportFormat::Tsv) {
                     Ok(()) => (),
                     Err(err) => println!("Operation failed: {err}"),
                 }

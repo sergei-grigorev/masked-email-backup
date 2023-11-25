@@ -13,7 +13,7 @@ mod export;
 mod show_emails;
 
 pub enum ExportFormat {
-    TSV,
+    Tsv,
 }
 
 pub fn refresh_db<PasswordStorage>(config: &AppConfig) -> Result<(), String>
@@ -100,7 +100,7 @@ where
 
         // todo: convert to the right format
         match format {
-            ExportFormat::TSV => {
+            ExportFormat::Tsv => {
                 export::export_tsv(&emails);
             }
         }
