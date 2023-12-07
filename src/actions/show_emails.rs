@@ -2,7 +2,7 @@ use std::{borrow::Cow, sync::Arc};
 
 use skim::{
     prelude::{unbounded, SkimOptionsBuilder},
-    Skim, SkimItem, SkimItemReceiver, SkimItemSender,
+    ItemPreview, PreviewContext, Skim, SkimItem, SkimItemReceiver, SkimItemSender,
 };
 
 use crate::model::masked_email::MaskedEmail;
@@ -22,6 +22,13 @@ impl SkimItem for WrappedMaskedEmail {
         ))
     }
 
+    fn preview(&self, _context: PreviewContext) -> ItemPreview {
+        ItemPreview::Text(format!(
+            "Email: {}\nDomain: {}\nDescription: {}",
+            self.email, self.domain, self.description
+        ))
+    }
+
     fn output(&self) -> Cow<str> {
         Cow::Borrowed(self.id.as_str())
     }
@@ -31,6 +38,7 @@ pub fn interact(emails: &[MaskedEmail]) {
     let options = SkimOptionsBuilder::default()
         .height(Some("50%"))
         .multi(true)
+        .preview(Some(""))
         .build()
         .unwrap();
 

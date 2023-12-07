@@ -3,7 +3,7 @@ use config::{
     run_args, userconfig::UserConfig, AppConfig, ConfigReader, COMMAND_EXPORT_DB, COMMAND_INIT,
     COMMAND_REFRESH_DB, COMMAND_SHOW_DB, COMMAND_UPDATE_PASSWORD,
 };
-use secrets::fake::FakeSecret;
+use secrets::keychain::KeyChain;
 
 use crate::{
     cli::{password_prompt, user_prompt},
@@ -21,7 +21,7 @@ mod secrets;
 fn main() {
     env_logger::init();
 
-    run_app::<FakeSecret, UserConfig>();
+    run_app::<KeyChain, UserConfig>();
 }
 
 fn run_app<PasswordStorage, ConfigStorage>()

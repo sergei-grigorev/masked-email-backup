@@ -229,7 +229,7 @@ impl Database {
         // serialize nonce
         buffer.write(&nonce).map_err(DBError::IOError)?;
         // serialize tag
-        buffer.write(&tag).map_err(DBError::IOError)?;
+        buffer.write(tag.as_slice()).map_err(DBError::IOError)?;
 
         // serialize binary length
         let blob_size: u64 = content_buffer

@@ -3,7 +3,6 @@ use std::ops::{Deref, DerefMut};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 pub mod encryption;
-pub mod fake;
 pub mod fastmail;
 pub mod keychain;
 
