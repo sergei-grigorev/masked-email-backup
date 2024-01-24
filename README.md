@@ -1,4 +1,4 @@
-# FastMail CLI client
+# FastMail client to make a full backup of emails and store them securely
 
 That small tool helps to store locally all the information about the generated Masked Email. Also it shows more details that UI provides.
 
