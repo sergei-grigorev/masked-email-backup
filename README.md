@@ -18,6 +18,18 @@ Example of metadata information that is received and stored in an encrypted stor
 }
 ```
 
+## Installation
+
+Run `cargo install --path .` to build and install the app.
+
+## Config
+
+Configuration is stored in the local app directory (for instance, on MacOS it will be `~/Library/Application Support/maskedemail-cli.toml`). The format is simple, just provide 2 parameters:
+```toml
+user_name = "<fastmail_account_full_email_address>"
+storage = "/tmp/masked-email-db"
+```
+
 ## Usage
 
 First you need to init new database. Then call refresh-db to fetch the current emails.
@@ -37,8 +49,8 @@ Options:
   -h, --help  Print help
 ```
 
-Export command supports exporting to tsv so you can use it to upload to another systems or use streams to show and filters data
-(for example, `cargo run -- export tsv | from tsv | where DESCRIPTION =~ "github"`).
+Export command supports exporting using lua script so you can use to transform to any desired format. See an example in `./lua/tsv.lua`.
+(the command to run would be `masked-email-cli export-lua -p ./lua/tsv.lua`).
 
 Command `show` helps to quickly search database to find by email / description / domain. It prints all the details stored in database.
 
@@ -91,4 +103,5 @@ the same as the database used to encrypt. Don't share API token with someone els
 
 Access to the password is provided by default only to the app that that password is created. After you update the app for the MacOS it will be another artifact
 that has no access. In that case when you see the MacOS Window to enter the system password to provide an access you need to click "Always Allow". Otherwise the
-password will be required to enter each time (the system password and not the FastMail token).
+password will be required to enter each time (the system password and not the FastMail token). Updating lua script does not affect the security system so you will
+see the password asking only first time you build and install the app.

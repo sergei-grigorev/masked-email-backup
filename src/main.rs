@@ -1,6 +1,8 @@
-use actions::{export_emails, refresh_db, show_emails, ExportFormat};
+use std::path::PathBuf;
+
+use actions::{export_lua, refresh_db, show_emails};
 use config::{
-    run_args, userconfig::UserConfig, AppConfig, ConfigReader, COMMAND_EXPORT_DB, COMMAND_INIT,
+    run_args, userconfig::UserConfig, AppConfig, ConfigReader, COMMAND_EXPORT_LUA, COMMAND_INIT,
     COMMAND_REFRESH_DB, COMMAND_SHOW_DB, COMMAND_UPDATE_PASSWORD,
 };
 use secrets::keychain::KeyChain;
@@ -60,25 +62,26 @@ where
             let config: AppConfig = config.expect("Configuration is not created or corrupted");
             match refresh_db::<PasswordStorage>(&config) {
                 Ok(()) => (),
-                Err(err) => println!("Operation failed: {err}"),
+                Err(err) => eprintln!("Operation failed: {err}"),
             }
         }
-        Some((COMMAND_EXPORT_DB, args)) => {
+        Some((COMMAND_EXPORT_LUA, args)) => {
             let config: AppConfig = config.expect("Configuration is not created or corrupted");
-            if args.contains_id("tsv") {
-                match export_emails::<PasswordStorage>(&config, ExportFormat::Tsv) {
-                    Ok(()) => (),
-                    Err(err) => println!("Operation failed: {err}"),
-                }
-            } else {
-                println!("Export format is not defined");
+            let lua_script = args
+                .get_one::<String>("path")
+                .expect("Lua script path is not provided")
+                .to_owned();
+            let path = PathBuf::from(lua_script);
+            match export_lua::<PasswordStorage>(&config, &path.as_path()) {
+                Ok(()) => (),
+                Err(err) => eprintln!("Operation failed: {err}"),
             }
         }
         Some((COMMAND_SHOW_DB, _)) => {
             let config: AppConfig = config.expect("Configuration is not created or corrupted");
             match show_emails::<PasswordStorage>(&config) {
                 Ok(()) => (),
-                Err(err) => println!("Operation failed: {err}"),
+                Err(err) => eprintln!("Operation failed: {err}"),
             }
         }
         Some(_) => {

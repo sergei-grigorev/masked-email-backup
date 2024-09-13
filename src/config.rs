@@ -7,7 +7,7 @@ pub mod userconfig;
 pub const COMMAND_INIT: &str = "init";
 pub const COMMAND_UPDATE_PASSWORD: &str = "update-password";
 pub const COMMAND_REFRESH_DB: &str = "refresh-db";
-pub const COMMAND_EXPORT_DB: &str = "export";
+pub const COMMAND_EXPORT_LUA: &str = "export-lua";
 pub const COMMAND_SHOW_DB: &str = "show";
 
 pub fn run_args() -> Command {
@@ -24,13 +24,9 @@ pub fn run_args() -> Command {
                 .about("Download the whole emails list and update the database"),
         )
         .subcommand(
-            Command::new(COMMAND_EXPORT_DB)
-                .about("Export all email aliases")
-                .arg(
-                    Arg::new("tsv")
-                        .help("Export to CSV format (tab splitted)")
-                        .required(true),
-                ),
+            Command::new(COMMAND_EXPORT_LUA)
+                .about("Export all email aliases using provided lua script")
+                .arg(Arg::new("path").short('p').required(true)),
         )
         .subcommand(Command::new(COMMAND_SHOW_DB).about("Show all email aliases"));
 

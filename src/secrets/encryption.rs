@@ -6,6 +6,7 @@ use aes_gcm::{
 };
 use argon2::Argon2;
 use rand_core::{OsRng, RngCore};
+use thiserror::Error;
 
 use super::{AesKeyValue, PasswordValue};
 
@@ -16,6 +17,18 @@ pub type KeyDerivationSalt = [u8; NONCE_SIZE_BYTES];
 pub type EncryptionTag = Tag<U16>;
 
 pub type EncryptionNonce = Nonce<Aes256Gcm>;
+
+pub type Result<T> = std::result::Result<T, EncryptionError>;
+
+#[derive(Error, Debug)]
+pub enum EncryptionError {
+    #[error("Problem with generating new AES key: {0}")]
+    KeyGeneration(String),
+    #[error("Encryption failed: {0}")]
+    Encryption(String),
+    #[error("Decryption failed: {0}")]
+    Decryption(String),
+}
 
 /// Generate new salt for key derivations.
 pub fn generate_new_salt() -> KeyDerivationSalt {
@@ -28,7 +41,7 @@ pub fn generate_new_salt() -> KeyDerivationSalt {
 pub fn generate_key(
     password: &PasswordValue,
     key_derivation_salt: &KeyDerivationSalt,
-) -> Result<AesKeyValue, argon2::Error> {
+) -> Result<AesKeyValue> {
     // generate 256 bits key
     let mut output_key_material = AesKeyValue::default();
 
@@ -40,7 +53,8 @@ pub fn generate_key(
         password.value.as_bytes(),
         key_derivation_salt,
         output_key_material.deref_mut(),
-    )?;
+    )
+    .map_err(|e| EncryptionError::KeyGeneration(e.to_string()))?;
 
     Ok(output_key_material)
 }
@@ -50,13 +64,15 @@ pub fn encrypt_in_place(
     key: &AesKeyValue,
     associated_data: &[u8],
     buffer: &mut [u8],
-) -> Result<(EncryptionTag, EncryptionNonce), aes_gcm::Error> {
+) -> Result<(EncryptionTag, EncryptionNonce)> {
     let key: &Key<Aes256Gcm> = key.deref().into();
 
     // generate cipher and encrypt the message
     let cipher: Aes256Gcm = Aes256Gcm::new(key);
     let nonce: Nonce<Aes256Gcm> = Aes256Gcm::generate_nonce(OsRng);
-    let tag: Tag<U16> = cipher.encrypt_in_place_detached(&nonce, associated_data, buffer)?;
+    let tag: Tag<U16> = cipher
+        .encrypt_in_place_detached(&nonce, associated_data, buffer)
+        .map_err(|e| EncryptionError::Encryption(e.to_string()))?;
     Ok((tag, nonce))
 }
 
@@ -67,12 +83,12 @@ pub fn decrypt_in_place(
     associated_data: &[u8],
     buffer: &mut [u8],
     tag: &EncryptionTag,
-) -> Result<(), aes_gcm::Error> {
+) -> Result<()> {
     let key: &Key<Aes256Gcm> = key.deref().into();
 
     // generate cipher and encrypt the message
     let cipher: Aes256Gcm = Aes256Gcm::new(key);
-    cipher.decrypt_in_place_detached(nonce, associated_data, buffer, tag)?;
+    cipher.decrypt_in_place_detached(nonce, associated_data, buffer, tag).map_err(|e| EncryptionError::Decryption(e.to_string()))?;
     Ok(())
 }
 
