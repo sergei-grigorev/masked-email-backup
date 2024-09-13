@@ -14,23 +14,9 @@ pub enum LuaError {
     Lua(#[from] mlua::Error),
 }
 
-pub fn export_tsv(emails: &[MaskedEmail]) {
-    // print headers
-    println!("EMAIL\tSITE\tDESCRIPTION\tSTATUS");
+pub type Result<T> = std::result::Result<T, LuaError>;
 
-    // print records
-    for email in emails {
-        println!(
-            "{}\t{}\t{}\t{}",
-            email.email,
-            email.web_site.as_deref().unwrap_or_default(),
-            email.description.as_deref().unwrap_or_default(),
-            email.state
-        )
-    }
-}
-
-pub fn export_lua(emails: &[MaskedEmail], script: &Path) -> Result<(), LuaError> {
+pub fn export_lua(emails: &[MaskedEmail], script: &Path) -> Result<()> {
     let script_file = fs::read_to_string(script)?;
 
     // lua interpreter
@@ -58,12 +44,16 @@ pub fn export_lua(emails: &[MaskedEmail], script: &Path) -> Result<(), LuaError>
     // create struct describing format
     {
         let format = lua.create_table()?;
+        format.set("internal_id", "string")?;
         format.set("email", "string")?;
-        format.set("site", "string")?;
         format.set("description", "string")?;
-        format.set("status", "string")?;
+        format.set("web_site", "string")?;
+        format.set("integration_url", "string")?;
+        format.set("state", "string")?;
+        format.set("created_at", "string")?;
+        format.set("last_message_at", "string")?;
 
-        prepare.call(format)?;
+        let _ = prepare.call(format)?;
     }
 
     // write the header
@@ -72,12 +62,19 @@ pub fn export_lua(emails: &[MaskedEmail], script: &Path) -> Result<(), LuaError>
     debug!("Header has length: {}", footer_text.len());
     output.push_str(&footer_text);
 
-    let result: Result<usize, mlua::Error> = emails.iter().try_fold(0usize, |acc, e| {
+    let result: std::result::Result<usize, mlua::Error> = emails.iter().try_fold(0usize, |acc, e| {
         let record = lua.create_table()?;
+        record.set("internal_id", e.internal_id.clone())?;
         record.set("email", e.email.clone())?;
-        record.set("site", e.web_site.clone())?;
         record.set("description", e.description.clone())?;
-        record.set("status", e.state.to_string())?;
+        record.set("web_site", e.web_site.clone())?;
+        record.set("integration_url", e.integration_url.clone())?;
+        record.set("state", e.state.to_string())?;
+        record.set("created_at", e.created_at.to_rfc2822())?;
+
+        if let Some(last_message_at) = e.last_message_at {
+            record.set("last_message_at", last_message_at.to_rfc2822())?;
+        }
 
         let record_text: String = next.call(record)?;
         output.push_str(&record_text);
