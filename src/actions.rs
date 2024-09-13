@@ -1,6 +1,5 @@
 use std::path::Path;
 
-use clap::error;
 use export::LuaError;
 use thiserror::Error;
 
