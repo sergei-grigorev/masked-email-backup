@@ -41,7 +41,7 @@ Commands:
   init             Create or update the program configuration
   update-password  Store new fastmail password. The old record might be deleted
   refresh-db       Download the whole emails list and update the database
-  export           Export all email aliases
+  export-lua       Export all email aliases using provided lua script
   show             Show all email aliases
   help             Print this message or the help of the given subcommand(s)
 
@@ -83,7 +83,7 @@ Unique nonce every time is generated when the database is refreshed. That preven
 FastMail service API is required to work with the FastMail database. That password is securely stored in Apple KeyChain and not visible for other apps. It is
 never sent to other services.
 
-AES key is generated from the FastMail token and unique salt generated for all new databases. So, when you create a new database then you need to  
+AES key is generated from the FastMail token and unique salt generated for all new databases. So, when you create a new database then you need to
 provide FastMail API token only. Argon2 algorithm is used to generate secure AES-256 key from the fastmail token and newly generated salt. That salt is stored
 in the database. That means if you copy that database to a new machine then the AES-256 key will be derived providing you a chance to decrypt the database. But
 noone else can decrypt the database without knowing your fastmail api token.
