@@ -1,8 +1,17 @@
-# FastMail client to make a full backup of emails and store them securely
+# Masked Email CLI - FastMail Client for Masked Email Management
 
-That small tool helps to store locally all the information about the generated Masked Email. Also it shows more details that UI provides.
+A Rust-based CLI tool that helps to securely store and manage all information about your FastMail masked emails. This tool provides more detailed information than the FastMail UI and allows for flexible data export through Lua scripting.
 
-Example of metadata information that is received and stored in an encrypted storage.
+## Overview
+
+This application allows you to:
+- Securely store your FastMail masked email data locally
+- View detailed metadata about your masked emails
+- Search through your masked emails by email address, description, or domain
+- Export your masked email data in various formats using Lua scripts
+- Maintain an encrypted local database of your masked emails
+
+Example of metadata information that is received and stored in the encrypted storage:
 
 ```json
 {
@@ -18,9 +27,21 @@ Example of metadata information that is received and stored in an encrypted stor
 }
 ```
 
+## Requirements
+
+- Rust 2021 edition (see rust-toolchain file)
+- MacOS (for KeyChain integration)
+- FastMail account with API access
+
 ## Installation
 
-Run `cargo install --path .` to build and install the app.
+1. Clone the repository
+2. Build and install the application:
+   ```bash
+   cargo install --path .
+   ```
+
+This will compile the application and install it to your system.
 
 ## Config
 
@@ -32,7 +53,26 @@ storage = "/tmp/masked-email-db"
 
 ## Usage
 
-First you need to init new database. Then call refresh-db to fetch the current emails.
+### Getting Started
+
+1. Initialize a new database configuration:
+   ```bash
+   masked-email-cli init
+   ```
+   You'll be prompted to enter your FastMail email address and the location for your database file.
+
+2. Set your FastMail API token:
+   ```bash
+   masked-email-cli update-password
+   ```
+   You'll need to generate an app-specific password in your FastMail account settings.
+
+3. Download your masked emails:
+   ```bash
+   masked-email-cli refresh-db
+   ```
+
+### Command Reference
 
 ```text
 Usage: masked-email-cli [COMMAND]
@@ -49,10 +89,27 @@ Options:
   -h, --help  Print help
 ```
 
-Export command supports exporting using lua script so you can use to transform to any desired format. See an example in `./lua/tsv.lua`.
-(the command to run would be `masked-email-cli export-lua -p ./lua/tsv.lua`).
+### Searching Emails
 
-Command `show` helps to quickly search database to find by email / description / domain. It prints all the details stored in database.
+The `show` command helps you quickly search the database to find emails by address, description, or domain:
+```bash
+masked-email-cli show
+```
+This will open an interactive search interface where you can filter and view detailed information about your masked emails.
+
+### Exporting Data with Lua Scripts
+
+The application supports exporting your masked email data using Lua scripts, allowing you to transform the data into any desired format:
+
+```bash
+masked-email-cli export-lua -p ./lua/tsv.lua
+```
+
+Several example scripts are provided in the `lua` directory:
+- `tsv.lua` - Export to tab-separated values format
+- `json.lua` - Export to JSON format
+- `xml.lua` - Export to XML format
+- `email_only.lua` - Export just the email addresses
 
 ## Encrypted storage
 
@@ -105,3 +162,38 @@ Access to the password is provided by default only to the app that that password
 that has no access. In that case when you see the MacOS Window to enter the system password to provide an access you need to click "Always Allow". Otherwise the
 password will be required to enter each time (the system password and not the FastMail token). Updating lua script does not affect the security system so you will
 see the password asking only first time you build and install the app.
+
+## Architecture
+
+The application is built with the following components:
+
+- **CLI Interface**: Built with `clap` for command-line argument parsing
+- **Configuration Management**: Uses `config` crate to manage user configuration
+- **Secure Storage**: 
+  - Uses MacOS KeyChain for secure storage of FastMail API tokens
+  - Implements AES-256 encryption for the local database
+- **FastMail API Integration**: Communicates with FastMail's API to retrieve masked email data
+- **Lua Scripting Engine**: Uses `mlua` to provide a flexible data export system
+- **Interactive Search**: Uses `skim` for fuzzy searching through the database
+
+## Lua Scripting
+
+The application supports custom Lua scripts for exporting data. Lua scripts should implement the following functions:
+
+- `prepare(table)`: Called first, allows you to set up any necessary state
+- `header()`: Called before processing records, should return header text if needed
+- `next(record)`: Called for each record, should return formatted output for that record
+- `footer()`: Called after all records are processed, should return footer text if needed
+
+Each record passed to the `next` function contains the following fields:
+- `email`: The masked email address
+- `description`: Description of the email
+- `web_site`: Associated website/domain
+- `state`: Current state (enabled/disabled)
+- `created_at`: Creation timestamp
+
+See the examples in the `lua` directory for reference implementations.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
