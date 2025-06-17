@@ -88,7 +88,9 @@ pub fn decrypt_in_place(
 
     // generate cipher and encrypt the message
     let cipher: Aes256Gcm = Aes256Gcm::new(key);
-    cipher.decrypt_in_place_detached(nonce, associated_data, buffer, tag).map_err(|e| EncryptionError::Decryption(e.to_string()))?;
+    cipher
+        .decrypt_in_place_detached(nonce, associated_data, buffer, tag)
+        .map_err(|e| EncryptionError::Decryption(e.to_string()))?;
     Ok(())
 }
 

@@ -62,24 +62,25 @@ pub fn export_lua(emails: &[MaskedEmail], script: &Path) -> Result<()> {
     debug!("Header has length: {}", footer_text.len());
     output.push_str(&footer_text);
 
-    let result: std::result::Result<usize, mlua::Error> = emails.iter().try_fold(0usize, |acc, e| {
-        let record = lua.create_table()?;
-        record.set("internal_id", e.internal_id.clone())?;
-        record.set("email", e.email.clone())?;
-        record.set("description", e.description.clone())?;
-        record.set("web_site", e.web_site.clone())?;
-        record.set("integration_url", e.integration_url.clone())?;
-        record.set("state", e.state.to_string())?;
-        record.set("created_at", e.created_at.to_rfc2822())?;
+    let result: std::result::Result<usize, mlua::Error> =
+        emails.iter().try_fold(0usize, |acc, e| {
+            let record = lua.create_table()?;
+            record.set("internal_id", e.internal_id.clone())?;
+            record.set("email", e.email.clone())?;
+            record.set("description", e.description.clone())?;
+            record.set("web_site", e.web_site.clone())?;
+            record.set("integration_url", e.integration_url.clone())?;
+            record.set("state", e.state.to_string())?;
+            record.set("created_at", e.created_at.to_rfc2822())?;
 
-        if let Some(last_message_at) = e.last_message_at {
-            record.set("last_message_at", last_message_at.to_rfc2822())?;
-        }
+            if let Some(last_message_at) = e.last_message_at {
+                record.set("last_message_at", last_message_at.to_rfc2822())?;
+            }
 
-        let record_text: String = next.call(record)?;
-        output.push_str(&record_text);
-        Ok(acc + record_text.len())
-    });
+            let record_text: String = next.call(record)?;
+            output.push_str(&record_text);
+            Ok(acc + record_text.len())
+        });
 
     // check result is ok
     let body_size = result?;
